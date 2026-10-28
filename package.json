@@ -10,12 +10,13 @@
   "scripts": {
     "start": "cp style.css example/style.css && esbuild example/index.js --bundle --format=esm --outfile=example/bundle.js --servedir=example --serve --watch",
     "build": "mkdir -p dist && cp style.css dist/maplibre-gl-compare.css && esbuild index.js --bundle --format=esm --minify --outfile=dist/maplibre-gl-compare.js",
-    "test": "npm run lint && npm run test:esm && npm run test:browser",
+    "test": "npm run lint && npm run test:esm && npm run test:types && npm run test:browser",
     "lint": "eslint --no-eslintrc -c .eslintrc index.js sync-move.js example/index.js test/*.js test/support/*.js",
     "docs": "documentation build index.js --format=md > API.md",
     "test:esm": "npm run build && node --test test/esm.js test/unit.js",
     "test:browser": "node --test test/browser.js",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "test:types": "node --test test/types.js"
   },
   "repository": {
     "type": "git",
@@ -34,7 +35,8 @@
     "eslint": "^8.9.0",
     "maplibre-gl": "^6.16.0",
     "esbuild": "^0.25.0",
-    "playwright": "^1.56.1"
+    "playwright": "^1.56.1",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "events": "^3.3.0"
@@ -45,9 +47,19 @@
   "type": "module",
   "module": "dist/maplibre-gl-compare.js",
   "exports": {
-    ".": "./dist/maplibre-gl-compare.js",
-    "./dist/maplibre-gl-compare.css": "./dist/maplibre-gl-compare.css",
-    "./style.css": "./style.css",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./dist/maplibre-gl-compare.js"
+    },
+    "./dist/maplibre-gl-compare.css": {
+      "types": "./dist/maplibre-gl-compare.css.d.ts",
+      "default": "./dist/maplibre-gl-compare.css"
+    },
+    "./style.css": {
+      "types": "./style.css.d.ts",
+      "default": "./style.css"
+    },
     "./package.json": "./package.json"
-  }
+  },
+  "types": "./index.d.ts"
 }

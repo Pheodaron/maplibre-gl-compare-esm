@@ -318,6 +318,25 @@ ESM is the only package build format; there is no CJS/UMD output or format switc
 
 `npm pack` and `npm publish` rebuild the distribution automatically through `prepack`.
 
+## TypeScript
+
+TypeScript declarations are included in this package, including the CSS entry points. No separate `@types` package or manual `declare module` is needed.
+
+```ts
+import Compare, { type CompareOptions } from "@maplibre/maplibre-gl-compare";
+import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
+
+const options: CompareOptions = { orientation: "vertical", mousemove: true };
+const compare = new Compare(beforeMap, afterMap, "#comparison-container", options);
+compare.on("slideend", (event) => {
+  console.log(event.currentPosition); // number
+});
+```
+
+The declarations cover the constructor, options, public methods, slider position, and event payloads. They support modern `bundler`/`NodeNext`/`Node16` resolution and legacy `node` resolution. `CompareOptions`, `SlideEndEvent`, `CompareEventMap`, and `CompareEventListener` are exported types. `CompareEventMap` can be augmented to type custom events.
+
+With `NodeNext`/`Node16` and full dependency declaration checking, current MapLibre dependencies `@maplibre/geojson-vt` and `@maplibre/vt-pbf` have a separate upstream TS2834 issue (extensionless imports). Compare's type tests report these upstream diagnostics separately; they do not suppress errors in this package or application examples.
+
 ## MapLibre v6 compatibility and camera behavior
 
 Browser integration tests cover MapLibre GL JS 6.0.0, 6.8.0, and 6.16.0 using real WebGL2 maps and a GeoJSON source. MapLibre v6 provides named exports, so use `import * as maplibregl from "maplibre-gl"` or `import { Map } from "maplibre-gl"`; it has no default export. Its browser entry is `dist/maplibre-gl.mjs`, not the older global `maplibre-gl.js` script.
@@ -334,7 +353,7 @@ npx playwright install chromium
 npm test
 ```
 
-The suite runs lint, ESM import checks, regression tests, and Chromium integration tests with local map data; it does not require a map token or remote tiles. For an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable path. CI runs the browser tests against the three MapLibre v6 versions listed above.
+The suite runs lint, ESM import checks, regression tests, TypeScript consumer checks, and Chromium integration tests with local map data; it does not require a map token or remote tiles. For an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable path. CI runs the browser tests against the three MapLibre v6 versions listed above.
 
 ## Motivation
 
