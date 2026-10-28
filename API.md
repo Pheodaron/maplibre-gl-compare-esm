@@ -25,13 +25,13 @@
 *   `container` **([string][14] | [HTMLElement][15])** An HTML Element, or an element selector string for the compare container. It should be a wrapper around the two map Elements.
 *   `options` **[Object][13]** 
 
-    *   `options.orientation` **[string][14]** The orientation of the compare slider. `vertical` creates a vertical slider bar to compare one map on the left (map A) with another map on the right (map B). `horizontal` creates a horizontal slider bar to compare on mop on the top (map A) and another map on the bottom (map B). (optional, default `vertical`)
+    *   `options.orientation` **[string][14]** The orientation of the compare slider. `vertical` creates a vertical slider bar to compare one map on the left (map A) with another map on the right (map B). `horizontal` creates a horizontal slider bar to compare one map on the top (map A) and another map on the bottom (map B). (optional, default `vertical`)
     *   `options.mousemove` **[boolean][16]** If `true` the compare slider will move with the cursor, otherwise the slider will need to be dragged to move. (optional, default `false`)
 
 ### Examples
 
 ```javascript
-var compare = new maplibregl.Compare(beforeMap, afterMap, '#wrapper', {
+var compare = new Compare(beforeMap, afterMap, '#wrapper', {
   orientation: 'vertical',
   mousemove: true
 });
@@ -39,7 +39,8 @@ var compare = new maplibregl.Compare(beforeMap, afterMap, '#wrapper', {
 
 ### setSlider
 
-Set the position of the slider.
+Set the position of the slider, clamped to the map bounds.
+Non-finite values and non-number arguments throw a TypeError.
 
 #### Parameters
 
@@ -52,8 +53,7 @@ Adds a listener for events of a specified type.
 #### Parameters
 
 *   `type` **[string][14]** The event type to listen for; one of `slideend`.
-*   `fn`  
-*   `listener` **[Function][18]** The function to be called when the event is fired.
+*   `fn` **[Function][18]** The function to be called when the event is fired.
 
 Returns **[Compare][19]** `this`
 
@@ -75,8 +75,7 @@ Removes an event listener previously added with `Compare#on`.
 #### Parameters
 
 *   `type` **[string][14]** The event type previously used to install the listener.
-*   `fn`  
-*   `listener` **[Function][18]** The function previously installed as a listener.
+*   `fn` **[Function][18]** The function previously installed as a listener.
 
 Returns **[Compare][19]** `this`
 

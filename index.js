@@ -1,4 +1,4 @@
-import syncMove from "@mapbox/mapbox-gl-sync-move";
+import syncMove from "./sync-move.js";
 import { EventEmitter } from "events";
 
 /**
@@ -6,7 +6,7 @@ import { EventEmitter } from "events";
  * @param {Object} b The second MapLibre GL Map
  * @param {string|HTMLElement} container An HTML Element, or an element selector string for the compare container. It should be a wrapper around the two map Elements.
  * @param {Object} options
- * @param {string} [options.orientation=vertical] The orientation of the compare slider. `vertical` creates a vertical slider bar to compare one map on the left (map A) with another map on the right (map B). `horizontal` creates a horizontal slider bar to compare on mop on the top (map A) and another map on the bottom (map B).
+ * @param {string} [options.orientation=vertical] The orientation of the compare slider. `vertical` creates a vertical slider bar to compare one map on the left (map A) with another map on the right (map B). `horizontal` creates a horizontal slider bar to compare one map on the top (map A) and another map on the bottom (map B).
  * @param {boolean} [options.mousemove=false] If `true` the compare slider will move with the cursor, otherwise the slider will need to be dragged to move.
  * @example
  * var compare = new Compare(beforeMap, afterMap, '#wrapper', {
@@ -19,11 +19,15 @@ function Compare(a, b, container, options) {
   this.options = options ? options : {};
   this._mapA = a;
   this._mapB = b;
+  this._removed = false;
+  this._dragging = false;
+  this._document = a.getContainer().ownerDocument || document;
   this._horizontal = this.options.orientation === "horizontal";
   this._onDown = this._onDown.bind(this);
   this._onMove = this._onMove.bind(this);
   this._onMouseUp = this._onMouseUp.bind(this);
   this._onTouchEnd = this._onTouchEnd.bind(this);
+  this._onTouchCancel = this._onTouchCancel.bind(this);
   this._ev = new EventEmitter();
   this._swiper = document.createElement("div");
   this._swiper.className = this._horizontal
@@ -34,7 +38,6 @@ function Compare(a, b, container, options) {
   this._controlContainer.className = this._horizontal
     ? "maplibregl-compare maplibregl-compare-horizontal"
     : "maplibregl-compare";
-  this._controlContainer.className = this._controlContainer.className;
   this._controlContainer.appendChild(this._swiper);
 
   if (typeof container === "string" && document.body.querySelectorAll) {
@@ -61,10 +64,12 @@ function Compare(a, b, container, options) {
 
   this._clearSync = syncMove(a, b);
   this._onResize = function () {
+    if (this._removed) return;
     this._bounds = b.getContainer().getBoundingClientRect();
-    if (this.currentPosition) this._setPosition(this.currentPosition);
+    this._setPosition(this.currentPosition);
   }.bind(this);
 
+  a.on("resize", this._onResize);
   b.on("resize", this._onResize);
 
   if (this.options && this.options.mousemove) {
@@ -83,20 +88,30 @@ Compare.prototype = {
   },
 
   _onDown: function (e) {
+    if (this._removed || (!e.touches && e.button !== undefined && e.button !== 0)) return;
+    this._stopDrag();
+    this._dragging = true;
+    this._bounds = this._mapB.getContainer().getBoundingClientRect();
+    if (e.cancelable) e.preventDefault();
     if (e.touches) {
-      document.addEventListener("touchmove", this._onMove);
-      document.addEventListener("touchend", this._onTouchEnd);
+      this._document.addEventListener("touchmove", this._onMove, { passive: false });
+      this._document.addEventListener("touchend", this._onTouchEnd);
+      this._document.addEventListener("touchcancel", this._onTouchCancel);
     } else {
-      document.addEventListener("mousemove", this._onMove);
-      document.addEventListener("mouseup", this._onMouseUp);
+      this._document.addEventListener("mousemove", this._onMove);
+      this._document.addEventListener("mouseup", this._onMouseUp);
+    }
+    if (this._document.defaultView) {
+      this._document.defaultView.addEventListener("blur", this._onTouchCancel);
     }
   },
 
   _setPosition: function (x) {
-    x = Math.min(
+    if (!Number.isFinite(x)) throw new TypeError("Slider position must be a finite number.");
+    x = Math.max(0, Math.min(
       x,
       this._horizontal ? this._bounds.height : this._bounds.width
-    );
+    ));
     var pos = this._horizontal
       ? "translate(0, " + x + "px)"
       : "translate(" + x + "px, 0)";
@@ -115,6 +130,9 @@ Compare.prototype = {
   },
 
   _onMove: function (e) {
+    if (this._removed || (e.touches && !e.touches.length)) return;
+    this._bounds = this._mapB.getContainer().getBoundingClientRect();
+    if (this._dragging && e.touches && e.cancelable) e.preventDefault();
     if (this.options && this.options.mousemove) {
       this._setPointerEvents(e.touches ? "auto" : "none");
     }
@@ -124,16 +142,30 @@ Compare.prototype = {
       : this._setPosition(this._getX(e));
   },
 
+  _stopDrag: function () {
+    var wasDragging = this._dragging;
+    this._dragging = false;
+    this._document.removeEventListener("mousemove", this._onMove);
+    this._document.removeEventListener("mouseup", this._onMouseUp);
+    this._document.removeEventListener("touchmove", this._onMove);
+    this._document.removeEventListener("touchend", this._onTouchEnd);
+    this._document.removeEventListener("touchcancel", this._onTouchCancel);
+    if (this._document.defaultView) {
+      this._document.defaultView.removeEventListener("blur", this._onTouchCancel);
+    }
+    return wasDragging;
+  },
+
   _onMouseUp: function () {
-    document.removeEventListener("mousemove", this._onMove);
-    document.removeEventListener("mouseup", this._onMouseUp);
-    this.fire("slideend", { currentPosition: this.currentPosition });
+    if (this._stopDrag()) this.fire("slideend", { currentPosition: this.currentPosition });
   },
 
   _onTouchEnd: function () {
-    document.removeEventListener("touchmove", this._onMove);
-    document.removeEventListener("touchend", this._onTouchEnd);
-    this.fire("slideend", { currentPosition: this.currentPosition });
+    if (this._stopDrag()) this.fire("slideend", { currentPosition: this.currentPosition });
+  },
+
+  _onTouchCancel: function () {
+    this._stopDrag();
   },
 
   _getX: function (e) {
@@ -153,11 +185,14 @@ Compare.prototype = {
   },
 
   /**
-   * Set the position of the slider.
+   * Set the position of the slider, clamped to the map bounds.
+   * Non-finite values and non-number arguments throw a TypeError.
    *
    * @param {number} x Slider position in pixels from left/top.
    */
   setSlider: function (x) {
+    if (this._removed) return;
+    this._bounds = this._mapB.getContainer().getBoundingClientRect();
     this._setPosition(x);
   },
 
@@ -165,7 +200,7 @@ Compare.prototype = {
    * Adds a listener for events of a specified type.
    *
    * @param {string} type The event type to listen for; one of `slideend`.
-   * @param {Function} listener The function to be called when the event is fired.
+   * @param {Function} fn The function to be called when the event is fired.
    * @returns {Compare} `this`
    */
   on: function (type, fn) {
@@ -189,7 +224,7 @@ Compare.prototype = {
    * Removes an event listener previously added with `Compare#on`.
    *
    * @param {string} type The event type previously used to install the listener.
-   * @param {Function} listener The function previously installed as a listener.
+   * @param {Function} fn The function previously installed as a listener.
    * @returns {Compare} `this`
    */
   off: function (type, fn) {
@@ -198,7 +233,11 @@ Compare.prototype = {
   },
 
   remove: function () {
+    if (this._removed) return;
+    this._removed = true;
+    this._stopDrag();
     this._clearSync();
+    this._mapA.off("resize", this._onResize);
     this._mapB.off("resize", this._onResize);
     var aContainer = this._mapA.getContainer();
 
@@ -217,6 +256,7 @@ Compare.prototype = {
     this._swiper.removeEventListener("mousedown", this._onDown);
     this._swiper.removeEventListener("touchstart", this._onDown);
     this._controlContainer.remove();
+    this._ev.removeAllListeners();
   },
 };
 

@@ -1,14 +1,15 @@
+import { Map } from "https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs";
 import Compare from "../index.js";
 
 // 'Before' style from https://github.com/lukasmartinelli/naturalearthtiles
-var before = new maplibregl.Map({
+var before = new Map({
   container: "before",
   style: "https://raw.githubusercontent.com/lukasmartinelli/naturalearthtiles/gh-pages/maps/natural_earth.vector.json",
   zoom: 2
 });
 
 // 'After' style from https://github.com/maplibre/demotiles
-var after = new maplibregl.Map({
+var after = new Map({
   container: "after",
   style: "https://demotiles.maplibre.org/style.json",
   zoom: 2
@@ -27,8 +28,8 @@ var options = {
 window.compare = new Compare(
   before,
   after,
-  wrapperSelector
-  // options
+  wrapperSelector,
+  options
 );
 
 var closeButton = document.getElementById("close-button");

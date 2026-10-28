@@ -11,10 +11,10 @@
     "start": "cp style.css example/style.css && esbuild example/index.js --bundle --format=esm --outfile=example/bundle.js --servedir=example --serve --watch",
     "build": "mkdir -p dist && cp style.css dist/maplibre-gl-compare.css && esbuild index.js --bundle --format=esm --minify --outfile=dist/maplibre-gl-compare.js",
     "test": "npm run lint && npm run test:esm && npm run test:browser",
-    "lint": "eslint --no-eslintrc -c .eslintrc index.js example/index.js test/index.js test/esm.js",
+    "lint": "eslint --no-eslintrc -c .eslintrc index.js sync-move.js example/index.js test/*.js test/support/*.js",
     "docs": "documentation build index.js --format=md > API.md",
-    "test:esm": "npm run build && node --test test/esm.js",
-    "test:browser": "esbuild test/index.js --bundle --format=cjs --external:tape --external:maplibre-gl --outfile=test/bundle.cjs && browserify test/bundle.cjs -o test/bundle.js && smokestack -b firefox < test/bundle.js | tap-status",
+    "test:esm": "npm run build && node --test test/esm.js test/unit.js",
+    "test:browser": "node --test test/browser.js",
     "prepack": "npm run build"
   },
   "repository": {
@@ -32,15 +32,11 @@
   "devDependencies": {
     "documentation": "^13.2.5",
     "eslint": "^8.9.0",
-    "maplibre-gl": "^2.1.6",
-    "smokestack": "^3.6.0",
-    "tap-status": "^1.0.1",
-    "tape": "^5.5.2",
+    "maplibre-gl": "^6.16.0",
     "esbuild": "^0.25.0",
-    "browserify": "^17.0.0"
+    "playwright": "^1.56.1"
   },
   "dependencies": {
-    "@mapbox/mapbox-gl-sync-move": "^0.3.0",
     "events": "^3.3.0"
   },
   "peerDependencies": {

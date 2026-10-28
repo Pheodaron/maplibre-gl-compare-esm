@@ -22,9 +22,8 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
       name="viewport"
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <script src="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.js"></script>
     <link
-      href="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.css"
+      href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css"
       rel="stylesheet"
     />
     <style>
@@ -56,6 +55,11 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
         user-select: none;
       }
 
+      #comparison-container {
+        position: relative;
+        height: 100vh;
+      }
+
       .map {
         position: absolute;
         top: 0;
@@ -69,6 +73,7 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
       <div id="after" class="map"></div>
     </div>
     <script type="module">
+      import * as maplibregl from "https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs";
       import Compare from "./maplibre-gl-compare.js";
       var beforeMap = new maplibregl.Map({
         container: "before",
@@ -90,7 +95,7 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
 
       var map = new Compare(beforeMap, afterMap, container, {
         // Set this to enable comparing two maps by mouse movement:
-        // m ousemove: true
+        // mousemove: true
       });
     </script>
   </body>
@@ -109,9 +114,8 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
       name="viewport"
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <script src="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.js"></script>
     <link
-      href="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.css"
+      href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css"
       rel="stylesheet"
     />
     <style>
@@ -143,6 +147,11 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
         user-select: none;
       }
 
+      #comparison-container {
+        position: relative;
+        height: 100vh;
+      }
+
       .map {
         position: absolute;
         top: 0;
@@ -156,6 +165,7 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
       <div id="after" class="map"></div>
     </div>
     <script type="module">
+      import * as maplibregl from "https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs";
       import Compare from "./maplibre-gl-compare.js";
       var beforeMap = new maplibregl.Map({
         container: "before",
@@ -178,7 +188,7 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
 
       var map = new Compare(beforeMap, afterMap, container, {
         // Set this to enable comparing two maps by mouse movement:
-        // m ousemove: true
+        // mousemove: true
       });
     </script>
   </body>
@@ -190,7 +200,7 @@ For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-g
 With a bundler that supports CSS imports (for example, Vite):
 
 ```js
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Compare from "@maplibre/maplibre-gl-compare";
 import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
@@ -222,7 +232,7 @@ var map = new Compare(beforeMap, afterMap, container, {
 ### Methods
 
 ```js
-compare = new Compare(beforeMap, afterMap, container, {
+const compare = new Compare(beforeMap, afterMap, container, {
   mousemove: true, // Optional. Set to true to enable swiping during cursor movement.
   orientation: 'vertical' // Optional. Sets the orientation of swiper to horizontal or vertical, defaults to vertical
 });
@@ -255,13 +265,13 @@ compare.remove();
 Install the ESM fork directly from GitHub, together with its MapLibre GL peer dependency:
 
 ```sh
-npm install git+https://github.com/Pheodaron/maplibre-gl-compare-esm.git#main maplibre-gl
+npm install git+https://github.com/Pheodaron/maplibre-gl-compare-esm.git#main maplibre-gl@^6
 ```
 
 `npm install @maplibre/maplibre-gl-compare` installs the upstream npm release, not this fork. This fork retains the original package name in `package.json`, so after installing from GitHub the imports are:
 
 ```js
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import Compare from "@maplibre/maplibre-gl-compare";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
@@ -277,11 +287,11 @@ Copy `dist/maplibre-gl-compare.js` and `dist/maplibre-gl-compare.css` from this 
 
 ```html
 <!-- MapLibre GL -->
-<link href="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.css" rel="stylesheet" />
+<link href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css" rel="stylesheet" />
 <link href="./maplibre-gl-compare.css" rel="stylesheet" />
 
-<script src="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.js"></script>
 <script type="module">
+  import * as maplibregl from "https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs";
   import Compare from "./maplibre-gl-compare.js";
   // After creating beforeMap and afterMap:
   // const compare = new Compare(beforeMap, afterMap, "#comparison-container");
@@ -306,7 +316,25 @@ The build produces **ESM only**: `dist/maplibre-gl-compare.js` is a minified, se
 
 ESM is the only package build format; there is no CJS/UMD output or format switch. The package uses `"type": "module"`, and its `main`, `module`, and `exports` entries point to the ESM bundle. For direct browser use, load it from a `<script type="module">` and import `Compare` explicitly. It does not register `maplibregl.Compare` globally.
 
-`npm pack` and `npm publish` rebuild the distribution automatically through `prepack`. Browserify and the temporary CJS bundle are used only by the browser test runner; they do not change the package output format.
+`npm pack` and `npm publish` rebuild the distribution automatically through `prepack`.
+
+## MapLibre v6 compatibility and camera behavior
+
+Browser integration tests cover MapLibre GL JS 6.0.0, 6.8.0, and 6.16.0 using real WebGL2 maps and a GeoJSON source. MapLibre v6 provides named exports, so use `import * as maplibregl from "maplibre-gl"` or `import { Map } from "maplibre-gl"`; it has no default export. Its browser entry is `dist/maplibre-gl.mjs`, not the older global `maplibre-gl.js` script.
+
+At construction, map B adopts map A's camera. Subsequent movement is synchronized in both directions: center, zoom, bearing, pitch, padding, and, when supported by both maps, roll, center elevation, and vertical field of view. Configure both maps with matching dimensions, projection, terrain, and camera constraints; compare does not copy map styles, terrain configuration, or projection settings.
+
+`setSlider(x)` accepts a finite number of pixels and clamps it to the map bounds. Invalid values throw a `TypeError`. Resize preserves the pixel position and clamps it if needed. `slideend` fires once when a mouse or touch drag completes. Cancellation, removal, programmatic positioning, and hover movement do not emit `slideend`. `remove()` also cancels active gestures and is safe to call more than once.
+
+## Tests
+
+```sh
+npm ci
+npx playwright install chromium
+npm test
+```
+
+The suite runs lint, ESM import checks, regression tests, and Chromium integration tests with local map data; it does not require a map token or remote tiles. For an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable path. CI runs the browser tests against the three MapLibre v6 versions listed above.
 
 ## Motivation
 
