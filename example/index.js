@@ -1,6 +1,4 @@
-"use strict";
-
-require("../");
+import Compare from "../index.js";
 
 // 'Before' style from https://github.com/lukasmartinelli/naturalearthtiles
 var before = new maplibregl.Map({
@@ -26,7 +24,7 @@ var options = {
   orientation: "horizontal",
 };
 
-window.compare = new maplibregl.Compare(
+window.compare = new Compare(
   before,
   after,
   wrapperSelector

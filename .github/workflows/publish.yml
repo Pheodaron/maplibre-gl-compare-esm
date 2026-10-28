@@ -13,12 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Use Node.js 10 x64
+      - name: Use Node.js 22 x64
         uses: actions/setup-node@v2
         with:
-          node-version: 10
+          node-version: 22
           architecture: x64
           registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
 
       - name: Publish
         run: |

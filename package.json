@@ -3,16 +3,19 @@
   "version": "0.6.0-dev",
   "description": "Swipe and sync between two MapLibre maps",
   "funding": "https://github.com/maplibre/maplibre-gl-js?sponsor=1",
-  "main": "index.js",
+  "main": "dist/maplibre-gl-compare.js",
   "directories": {
     "example": "example"
   },
   "scripts": {
-    "start": "cp style.css example/style.css && budo example/index.js --serve example/bundle.js --dir example --live",
-    "build": "cp style.css dist/maplibre-gl-compare.css && NODE_ENV=production && browserify index.js | uglifyjs -c -m > dist/maplibre-gl-compare.js",
-    "test": "npm run lint && browserify -t envify test/index.js | smokestack -b firefox | tap-status",
-    "lint": "eslint --no-eslintrc -c .eslintrc index.js example/index.js test/index.js",
-    "docs": "documentation build index.js --format=md > API.md"
+    "start": "cp style.css example/style.css && esbuild example/index.js --bundle --format=esm --outfile=example/bundle.js --servedir=example --serve --watch",
+    "build": "mkdir -p dist && cp style.css dist/maplibre-gl-compare.css && esbuild index.js --bundle --format=esm --minify --outfile=dist/maplibre-gl-compare.js",
+    "test": "npm run lint && npm run test:esm && npm run test:browser",
+    "lint": "eslint --no-eslintrc -c .eslintrc index.js example/index.js test/index.js test/esm.js",
+    "docs": "documentation build index.js --format=md > API.md",
+    "test:esm": "npm run build && node --test test/esm.js",
+    "test:browser": "esbuild test/index.js --bundle --format=cjs --external:tape --external:maplibre-gl --outfile=test/bundle.cjs && browserify test/bundle.cjs -o test/bundle.js && smokestack -b firefox < test/bundle.js | tap-status",
+    "prepack": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -27,21 +30,28 @@
   ],
   "license": "ISC",
   "devDependencies": {
-    "browserify": "^17.0.0",
-    "budo": "^11.6.4",
     "documentation": "^13.2.5",
-    "envify": "^4.1.0",
     "eslint": "^8.9.0",
     "maplibre-gl": "^2.1.6",
     "smokestack": "^3.6.0",
     "tap-status": "^1.0.1",
     "tape": "^5.5.2",
-    "uglify-js": "^3.15.1"
+    "esbuild": "^0.25.0",
+    "browserify": "^17.0.0"
   },
   "dependencies": {
-    "@mapbox/mapbox-gl-sync-move": "^0.3.0"
+    "@mapbox/mapbox-gl-sync-move": "^0.3.0",
+    "events": "^3.3.0"
   },
   "peerDependencies": {
     "maplibre-gl": ">=2.1.6"
+  },
+  "type": "module",
+  "module": "dist/maplibre-gl-compare.js",
+  "exports": {
+    ".": "./dist/maplibre-gl-compare.js",
+    "./dist/maplibre-gl-compare.css": "./dist/maplibre-gl-compare.css",
+    "./style.css": "./style.css",
+    "./package.json": "./package.json"
   }
 }

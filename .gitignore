@@ -1,3 +1,7 @@
 node_modules
 example/style.css
 .idea/
+
+example/bundle.js
+test/bundle.js
+test/bundle.cjs

@@ -1,8 +1,6 @@
-'use strict';
-
-var test = require('tape');
-window.maplibregl = require('maplibre-gl');
-require('../');
+import test from 'tape';
+import maplibregl from 'maplibre-gl';
+import Compare from '../dist/maplibre-gl-compare.js';
 
 // Tests
 test('Compare', function (t) {
@@ -22,7 +20,7 @@ test('Compare', function (t) {
 
   var container = document.createElement('div');
 
-  var compare = new maplibregl.Compare(a, b, container);
+  var compare = new Compare(a, b, container);
 
   t.ok(!!a.getContainer().style.clip, 'Map A is clipped');
   t.ok(!!b.getContainer().style.clip, 'Map B is clipped');
