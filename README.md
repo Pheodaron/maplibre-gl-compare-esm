@@ -2,13 +2,17 @@
 
 Swipe and sync between two MapLibre maps. This plugin was originally developed for Mapbox (https://github.com/mapbox/mapbox-gl-compare) and was migrated to MapLibre after Mapbox changed its license.
 
+This fork builds and distributes ES modules only. Install it from GitHub as described in [Installation](#installation).
+
 ## Code example
 
 ### Examples
 
+For these HTML examples, copy `dist/maplibre-gl-compare.js` and `dist/maplibre-gl-compare.css` from this fork into the same directory as the HTML file. Serve that directory over HTTP(S). See [Installation](#installation) below.
+
 #### Full Example without the need of a token
 
-```js
+```html
 <!DOCTYPE html>
 <html>
   <head>
@@ -18,7 +22,6 @@ Swipe and sync between two MapLibre maps. This plugin was originally developed f
       name="viewport"
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <script src="../.env"></script>
     <script src="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.js"></script>
     <link
       href="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.css"
@@ -96,7 +99,7 @@ Swipe and sync between two MapLibre maps. This plugin was originally developed f
 
 #### Full Example with the need of a token
 
-```js
+```html
 <!DOCTYPE html>
 <html>
   <head>
@@ -106,7 +109,6 @@ Swipe and sync between two MapLibre maps. This plugin was originally developed f
       name="viewport"
       content="initial-scale=1,maximum-scale=1,user-scalable=no"
     />
-    <script src="../.env"></script>
     <script src="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.js"></script>
     <link
       href="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.css"
@@ -185,7 +187,11 @@ Swipe and sync between two MapLibre maps. This plugin was originally developed f
 
 ### Usage
 
+With a bundler that supports CSS imports (for example, Vite):
+
 ```js
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import Compare from "@maplibre/maplibre-gl-compare";
 import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
 
@@ -244,34 +250,54 @@ compare.remove();
 
 ## Installation
 
-### Native
+### npm (from this GitHub fork)
 
-Add tags referencing `maplibre-gl-compare` after adding `maplibre-gl` to your website:
+Install the ESM fork directly from GitHub, together with its MapLibre GL peer dependency:
+
+```sh
+npm install git+https://github.com/Pheodaron/maplibre-gl-compare-esm.git#main maplibre-gl
+```
+
+`npm install @maplibre/maplibre-gl-compare` installs the upstream npm release, not this fork. This fork retains the original package name in `package.json`, so after installing from GitHub the imports are:
+
+```js
+import maplibregl from "maplibre-gl";
+import Compare from "@maplibre/maplibre-gl-compare";
+import "maplibre-gl/dist/maplibre-gl.css";
+import "@maplibre/maplibre-gl-compare/dist/maplibre-gl-compare.css";
+```
+
+The CSS imports above require a bundler with CSS support. `#main` selects the current main branch when npm resolves the dependency; replace it with a commit SHA to select a specific revision. Commit your application's lockfile to keep installations reproducible.
+
+The package exports `Compare` as the default ES module export. Import it directly; it does not attach to `maplibregl`. There is no CommonJS build.
+
+### Direct browser use
+
+Copy `dist/maplibre-gl-compare.js` and `dist/maplibre-gl-compare.css` from this repository (or from `node_modules/@maplibre/maplibre-gl-compare/dist/` after installation) into the same directory as your HTML file. Serve the files over HTTP(S), then load the JavaScript using a module script:
 
 ```html
 <!-- MapLibre GL -->
-<link href="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.css" rel='stylesheet' />
-<link href="maplibre-gl-compare.css" rel='stylesheet' />
+<link href="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.css" rel="stylesheet" />
+<link href="./maplibre-gl-compare.css" rel="stylesheet" />
 
 <script src="https://unpkg.com/maplibre-gl@2.1.6/dist/maplibre-gl.js"></script>
 <script type="module">
   import Compare from "./maplibre-gl-compare.js";
+  // After creating beforeMap and afterMap:
   // const compare = new Compare(beforeMap, afterMap, "#comparison-container");
 </script>
 ```
 
-### npm (ES modules)
-
-```sh
-npm install @maplibre/maplibre-gl-compare
-```
-
-The package exports `Compare` as the default ES module export. Import it directly; it does not attach to `maplibregl`. CommonJS `require()` is no longer supported.
+Adjust the paths if you place the distribution files in a different directory. The compare bundle includes its runtime dependencies; MapLibre GL is loaded separately.
 
 
 ## Build
 
+To build from source (Node.js 22 is used in CI):
+
 ```sh
+git clone https://github.com/Pheodaron/maplibre-gl-compare-esm.git
+cd maplibre-gl-compare-esm
 npm ci
 npm run build
 ```
