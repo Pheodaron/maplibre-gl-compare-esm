@@ -1,8 +1,41 @@
-## MapLibre GL Compare
+# MapLibre GL Compare — ESM fork
 
-Swipe and sync between two MapLibre maps. This plugin was originally developed for Mapbox (https://github.com/mapbox/mapbox-gl-compare) and was migrated to MapLibre after Mapbox changed its license.
+**This is an ESM-only fork of [MapLibre GL Compare](https://github.com/maplibre/maplibre-gl-compare), maintained in [Pheodaron/maplibre-gl-compare-esm](https://github.com/Pheodaron/maplibre-gl-compare-esm).** It compares two MapLibre maps with a movable divider and synchronizes their cameras.
 
-This fork builds and distributes ES modules only. Install it from GitHub as described in [Installation](#installation).
+**The package is intended for ES module imports.** `npm run build` always produces an ESM bundle; there is no CJS/UMD build or format switch. Import the default `Compare` export in your application, or use `<script type="module">` in a browser. The fork does not register a global `maplibregl.Compare`.
+
+```js
+import Compare from "@maplibre/maplibre-gl-compare";
+```
+
+Install **this fork from GitHub** using the [installation instructions](#installation). Installing `@maplibre/maplibre-gl-compare` directly from the npm registry selects the upstream package instead. The GitHub fork retains that package name, which is why the import above uses it.
+
+The fork includes [TypeScript declarations](#typescript), [MapLibre v6 integration tests](#maplibre-v6-compatibility-and-camera-behavior), and the fixes listed below. The original plugin was developed for [Mapbox](https://github.com/mapbox/mapbox-gl-compare) and later migrated to MapLibre.
+
+## Fixed bugs
+
+These fixes are included in this fork's current `main` branch:
+
+| Scenario | Corrected behavior |
+| --- | --- |
+| Resizing with the slider at position `0` | Clipping is recalculated even at the zero position. |
+| Scrolling, layout shifts, or CSS scaling | Pointer coordinates use current map bounds and local CSS pixels. Translation and nonuniform axis scaling are supported. |
+| Negative or invalid `setSlider()` arguments | Finite positions are clamped to the map bounds; non-number and non-finite arguments throw a `TypeError`. |
+| Removing Compare during a drag | Mouse, touch, and focus handlers are released; later movement cannot reapply clipping to the maps. |
+| Cancelled touch gestures or focus loss | The active drag is cancelled and its document/window handlers are removed. |
+| Additional fingers or mixed mouse/touch input | Only the initiating finger controls and ends a touch drag. Hover tracking also preserves touch access to the handle. |
+| Horizontal handle alignment | The handle is centered on the horizontal divider. |
+| Invalid constructor arguments or initialization failure | Maps, options, and the wrapper are validated; failed initialization removes the control, restores clipping, and releases subscriptions. |
+| Multiple Compare instances sharing a map | A conflicting instance is rejected; maps can be reused after the active instance is removed. |
+| Calling `map.remove()` before `compare.remove()` | Removing either map automatically disposes Compare. Repeated removal is safe. |
+| Pre-existing inline clipping styles | Removal restores the original clipping values instead of clearing them unconditionally. |
+| Mutation of the original options object | Construction copies the settings, so later mutations cannot disagree with installed handlers. |
+| Different initial cameras | Map B adopts map A's camera when Compare is created. |
+| Incomplete camera synchronization on MapLibre v6 | Roll, center elevation, vertical field of view, and padding are synchronized alongside center, zoom, bearing, and pitch, when supported. |
+| Camera changes inside user callbacks | Independent changes are reconciled; a non-converging callback loop raises a clear error after 16 synchronization passes. |
+| ESM imports and MapLibre v6 examples | Importing Compare does not require a global `window`; examples use MapLibre's named exports and Compare's default export instead of the removed global constructor. |
+
+See [Lifecycle and input validation](#lifecycle-and-input-validation) for the usage contract and [Tests](#tests) for the regression and stress coverage.
 
 ## Code example
 
