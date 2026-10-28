@@ -345,6 +345,18 @@ At construction, map B adopts map A's camera. Subsequent movement is synchronize
 
 `setSlider(x)` accepts a finite number of pixels and clamps it to the map bounds. Invalid values throw a `TypeError`. Resize preserves the pixel position and clamps it if needed. `slideend` fires once when a mouse or touch drag completes. Cancellation, removal, programmatic positioning, and hover movement do not emit `slideend`. `remove()` also cancels active gestures and is safe to call more than once.
 
+## Lifecycle and input validation
+
+Use two distinct, live MapLibre maps whose containers are wrapped by the compare container. The maps and wrapper must belong to the same document. Pass a container element directly when using Shadow DOM; selectors are resolved in the maps' document. A map can belong to only one active Compare instance. Call `remove()` before reusing it in another instance.
+
+Invalid maps, containers, orientation values, and non-boolean `mousemove` values are rejected before the component changes the page. A failed initialization removes its control, restores the original clipping styles, and releases subscriptions. Options are copied at construction; changing the original options object does not reconfigure an existing component.
+
+Removing either map automatically disposes Compare. Explicit removal cancels active gestures, restores the original inline clipping styles, and releases DOM and map handlers. After removal, `setSlider`, `on`, `off`, and `fire` have no effect. Calls to `remove()` remain safe to repeat.
+
+A touch drag follows the initiating finger; additional fingers cannot take over or end it. Mouse and touch gestures are kept separate. Coordinates are converted to local CSS pixels for translated or axis-scaled containers, including nonuniform scaling; arbitrary CSS rotation and skew are not supported.
+
+Camera changes made by a user callback during synchronization are reconciled after the current update. A callback that continually changes the camera is stopped with a clear error after 16 synchronization passes, instead of creating an unbounded feedback loop. Remove or correct that callback before continuing. Different camera constraints can still prevent matching views; configure compatible constraints on both maps.
+
 ## Tests
 
 ```sh
@@ -353,7 +365,9 @@ npx playwright install chromium
 npm test
 ```
 
-The suite runs lint, ESM import checks, regression tests, TypeScript consumer checks, and Chromium integration tests with local map data; it does not require a map token or remote tiles. For an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable path. CI runs the browser tests against the three MapLibre v6 versions listed above.
+The suite runs lint, ESM import checks, regression tests, 80,000 seeded state-machine operations, 10,000 camera updates, 2,000 create/remove cycles, TypeScript consumer checks, and Chromium integration tests with local map data; it does not require a map token or remote tiles. For an existing Chromium installation, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to its executable path. CI runs the browser tests against the three MapLibre v6 versions listed above.
+
+The browser stress suite also checks 20,000 slider updates, 200 component lifecycles, multiple touches, CSS scaling, iframe and Shadow DOM containers, retina rendering, competing animations, and map removal during a drag. These checks verify the specified invariants and subscriptions; they do not prove every possible browser or usage scenario is error-free.
 
 ## Motivation
 

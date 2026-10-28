@@ -1,42 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import { createServer } from 'node:http';
-import { dirname, resolve, sep, extname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
-import { chromium } from 'playwright';
-
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const maplibreDist = process.env.MAPLIBRE_DIST_PATH || resolve(root, 'node_modules/maplibre-gl/dist');
+import { browserFixture } from './support/browser.js';
 
 test('MapLibre v6 browser integration', async (t) => {
-  const server = createServer(async (request, response) => {
-    try {
-      const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
-      const isMaplibre = pathname.startsWith('/maplibre/');
-      const base = isMaplibre ? resolve(maplibreDist) : root;
-      const filename = resolve(base, pathname.slice(isMaplibre ? '/maplibre/'.length : 1));
-      if (!filename.startsWith(base + sep)) { response.writeHead(403).end(); return; }
-      const data = await readFile(filename);
-      const types = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html' };
-      response.writeHead(200, { 'Content-Type': types[extname(filename)] || 'application/octet-stream' });
-      response.end(data);
-    } catch {
-      response.writeHead(404).end();
-    }
-  });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  t.after(() => new Promise(resolve => server.close(resolve)));
-  const browser = await chromium.launch({
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-    args: ['--disable-dev-shm-usage', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
-  });
-  t.after(() => browser.close());
-  const page = await browser.newPage({ viewport: { width: 1000, height: 650 }, hasTouch: true });
-  const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  await page.goto(`http://127.0.0.1:${server.address().port}/test/fixture.html`);
-  await page.waitForFunction(() => !!window.fixture, null, { timeout: 30000 });
+  const { page, errors } = await browserFixture(t);
 
   await t.test('initial camera, clipping and drag', async () => {
     assert.deepEqual(await page.evaluate(() => {
@@ -44,7 +11,7 @@ test('MapLibre v6 browser integration', async (t) => {
       return { a: a.getCenter().toArray(), b: b.getCenter().toArray(), zoomA: a.getZoom(), zoomB: b.getZoom(), position: compare.currentPosition,
         clipA: a.getContainer().style.clip, clipB: b.getContainer().style.clip };
     }), { a: [0,0], b: [0,0], zoomA: 2, zoomB: 2, position: 400,
-      clipA: 'rect(0px, 400px, 400px, 0px)', clipB: 'rect(0px, 999em, 400px, 400px)' });
+      clipA: 'rect(0px, 400px, 400px, 0px)', clipB: 'rect(0px, 800px, 400px, 400px)' });
     const handle = await page.locator('.compare-swiper-vertical').boundingBox();
     await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
     await page.mouse.down(); await page.mouse.move(580,200); await page.mouse.up();

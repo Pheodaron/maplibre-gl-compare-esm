@@ -1,5 +1,8 @@
 import syncMove from "./sync-move.js";
 import { EventEmitter } from "events";
+import validate from "./validate.js";
+
+var activeMaps = new WeakMap();
 
 /**
  * @param {Object} a The first MapLibre GL Map
@@ -16,82 +19,94 @@ import { EventEmitter } from "events";
  * @see [Swipe between maps](https://maplibre.org/maplibre-gl-js-docs/plugins/)
  */
 function Compare(a, b, container, options) {
-  this.options = options ? options : {};
+  if (!new.target) throw new TypeError("Compare must be called with new.");
+  var args = validate(a, b, container, options);
+  if (activeMaps.has(a) || activeMaps.has(b)) throw new Error("A map already belongs to an active Compare.");
+  this.options = args.options;
+  this._mousemove = args.options.mousemove;
+  this._horizontal = args.options.orientation === "horizontal";
   this._mapA = a;
   this._mapB = b;
+  this._aContainer = args.aContainer;
+  this._bContainer = args.bContainer;
+  this._document = args.document;
+  this._originalClipA = this._aContainer.style.clip;
+  this._originalClipB = this._bContainer.style.clip;
   this._removed = false;
   this._dragging = false;
-  this._document = a.getContainer().ownerDocument || document;
-  this._horizontal = this.options.orientation === "horizontal";
+  this._clearSync = function () {};
   this._onDown = this._onDown.bind(this);
   this._onMove = this._onMove.bind(this);
   this._onMouseUp = this._onMouseUp.bind(this);
   this._onTouchEnd = this._onTouchEnd.bind(this);
   this._onTouchCancel = this._onTouchCancel.bind(this);
-  this._ev = new EventEmitter();
-  this._swiper = document.createElement("div");
-  this._swiper.className = this._horizontal
-    ? "compare-swiper-horizontal"
-    : "compare-swiper-vertical";
-
-  this._controlContainer = document.createElement("div");
-  this._controlContainer.className = this._horizontal
-    ? "maplibregl-compare maplibregl-compare-horizontal"
-    : "maplibregl-compare";
-  this._controlContainer.appendChild(this._swiper);
-
-  if (typeof container === "string" && document.body.querySelectorAll) {
-    // get container with a selector
-    var appendTarget = document.body.querySelectorAll(container)[0];
-    if (!appendTarget) {
-      throw new Error("Cannot find element with specified container selector.");
-    }
-    appendTarget.appendChild(this._controlContainer);
-  } else if (container instanceof Element && container.appendChild) {
-    // get container directly
-    container.appendChild(this._controlContainer);
-  } else {
-    throw new Error(
-      "Invalid container specified. Must be CSS selector or HTML element."
-    );
-  }
-
-  this._bounds = b.getContainer().getBoundingClientRect();
-  var swiperPosition =
-    (this._horizontal ? this._bounds.height : this._bounds.width) / 2;
-
-  this._setPosition(swiperPosition);
-
-  this._clearSync = syncMove(a, b);
+  this._onMapRemove = this.remove.bind(this);
   this._onResize = function () {
     if (this._removed) return;
-    this._bounds = b.getContainer().getBoundingClientRect();
+    this._updateBounds();
     this._setPosition(this.currentPosition);
   }.bind(this);
-
-  a.on("resize", this._onResize);
-  b.on("resize", this._onResize);
-
-  if (this.options && this.options.mousemove) {
-    a.getContainer().addEventListener("mousemove", this._onMove);
-    b.getContainer().addEventListener("mousemove", this._onMove);
+  this._ev = new EventEmitter();
+  this._swiper = this._document.createElement("div");
+  this._swiper.className = this._horizontal ? "compare-swiper-horizontal" : "compare-swiper-vertical";
+  this._controlContainer = this._document.createElement("div");
+  this._controlContainer.className = this._horizontal
+    ? "maplibregl-compare maplibregl-compare-horizontal" : "maplibregl-compare";
+  this._controlContainer.appendChild(this._swiper);
+  activeMaps.set(a, this);
+  activeMaps.set(b, this);
+  try {
+    this._updateBounds();
+    args.target.appendChild(this._controlContainer);
+    this._setPosition((this._horizontal ? this._bounds.height : this._bounds.width) / 2);
+    a.on("remove", this._onMapRemove);
+    b.on("remove", this._onMapRemove);
+    this._clearSync = syncMove(a, b);
+    if (this._removed) {
+      this._clearSync();
+      throw new Error("A map was removed during Compare initialization.");
+    }
+    a.on("resize", this._onResize);
+    b.on("resize", this._onResize);
+    if (this._mousemove) {
+      this._aContainer.addEventListener("mousemove", this._onMove);
+      this._bContainer.addEventListener("mousemove", this._onMove);
+      this._controlContainer.addEventListener("mousemove", this._onMove);
+    }
+    this._swiper.addEventListener("mousedown", this._onDown);
+    this._swiper.addEventListener("touchstart", this._onDown, { passive: false });
+  } catch (error) {
+    this.remove();
+    throw error;
   }
-
-  this._swiper.addEventListener("mousedown", this._onDown);
-  this._swiper.addEventListener("touchstart", this._onDown);
 }
 
 Compare.prototype = {
-  _setPointerEvents: function (v) {
-    this._controlContainer.style.pointerEvents = v;
-    this._swiper.style.pointerEvents = v;
+  _updateBounds: function () {
+    var rect = this._bContainer.getBoundingClientRect();
+    var width = this._bContainer.offsetWidth;
+    var height = this._bContainer.offsetHeight;
+    if (width === undefined) width = rect.width;
+    if (height === undefined) height = rect.height;
+    if (![width, height, rect.width, rect.height, rect.left, rect.top].every(Number.isFinite) ||
+        width < 0 || height < 0 || rect.width < 0 || rect.height < 0) {
+      throw new TypeError("Map container bounds must be finite and non-negative in size.");
+    }
+    this._bounds = {
+      width: width, height: height, left: rect.left, top: rect.top,
+      scaleX: rect.width ? width / rect.width : 1,
+      scaleY: rect.height ? height / rect.height : 1,
+    };
   },
 
   _onDown: function (e) {
-    if (this._removed || (!e.touches && e.button !== undefined && e.button !== 0)) return;
-    this._stopDrag();
+    if (this._removed || this._dragging) return;
+    if (e.touches && e.touches.length !== 1) return;
+    if (!e.touches && e.button !== undefined && e.button !== 0) return;
+    this._updateBounds();
     this._dragging = true;
-    this._bounds = this._mapB.getContainer().getBoundingClientRect();
+    this._dragType = e.touches ? "touch" : "mouse";
+    this._touchId = e.touches ? e.touches[0].identifier : undefined;
     if (e.cancelable) e.preventDefault();
     if (e.touches) {
       this._document.addEventListener("touchmove", this._onMove, { passive: false });
@@ -118,33 +133,41 @@ Compare.prototype = {
     this._controlContainer.style.transform = pos;
     this._controlContainer.style.WebkitTransform = pos;
     var clipA = this._horizontal
-      ? "rect(0, 999em, " + x + "px, 0)"
+      ? "rect(0, " + this._bounds.width + "px, " + x + "px, 0)"
       : "rect(0, " + x + "px, " + this._bounds.height + "px, 0)";
     var clipB = this._horizontal
-      ? "rect(" + x + "px, 999em, " + this._bounds.height + "px,0)"
-      : "rect(0, 999em, " + this._bounds.height + "px," + x + "px)";
+      ? "rect(" + x + "px, " + this._bounds.width + "px, " + this._bounds.height + "px,0)"
+      : "rect(0, " + this._bounds.width + "px, " + this._bounds.height + "px," + x + "px)";
 
-    this._mapA.getContainer().style.clip = clipA;
-    this._mapB.getContainer().style.clip = clipB;
+    this._aContainer.style.clip = clipA;
+    this._bContainer.style.clip = clipB;
     this.currentPosition = x;
   },
 
   _onMove: function (e) {
-    if (this._removed || (e.touches && !e.touches.length)) return;
-    this._bounds = this._mapB.getContainer().getBoundingClientRect();
-    if (this._dragging && e.touches && e.cancelable) e.preventDefault();
-    if (this.options && this.options.mousemove) {
-      this._setPointerEvents(e.touches ? "auto" : "none");
+    if (this._removed) return;
+    if (this._dragging && (e.touches ? "touch" : "mouse") !== this._dragType) return;
+    var point = e;
+    if (e.touches) {
+      point = null;
+      for (var i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === this._touchId) { point = e.touches[i]; break; }
+      }
     }
-
-    this._horizontal
-      ? this._setPosition(this._getY(e))
-      : this._setPosition(this._getX(e));
+    var coordinate = point && (this._horizontal ? point.clientY : point.clientX);
+    if (!Number.isFinite(coordinate)) return;
+    this._updateBounds();
+    if (this._dragging && e.touches && e.cancelable) e.preventDefault();
+    var offset = this._horizontal ? this._bounds.top : this._bounds.left;
+    var scale = this._horizontal ? this._bounds.scaleY : this._bounds.scaleX;
+    this._setPosition((coordinate - offset) * scale);
   },
 
   _stopDrag: function () {
     var wasDragging = this._dragging;
     this._dragging = false;
+    this._dragType = null;
+    this._touchId = undefined;
     this._document.removeEventListener("mousemove", this._onMove);
     this._document.removeEventListener("mouseup", this._onMouseUp);
     this._document.removeEventListener("touchmove", this._onMove);
@@ -157,31 +180,28 @@ Compare.prototype = {
   },
 
   _onMouseUp: function () {
-    if (this._stopDrag()) this.fire("slideend", { currentPosition: this.currentPosition });
+    if (this._dragType === "mouse" && this._stopDrag()) {
+      this.fire("slideend", { currentPosition: this.currentPosition });
+    }
   },
 
-  _onTouchEnd: function () {
-    if (this._stopDrag()) this.fire("slideend", { currentPosition: this.currentPosition });
+  _endsTouch: function (e) {
+    if (this._dragType !== "touch") return false;
+    if (!e || !e.changedTouches || !e.changedTouches.length) return true;
+    for (var i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === this._touchId) return true;
+    }
+    return false;
   },
 
-  _onTouchCancel: function () {
-    this._stopDrag();
+  _onTouchEnd: function (e) {
+    if (this._endsTouch(e) && this._stopDrag()) {
+      this.fire("slideend", { currentPosition: this.currentPosition });
+    }
   },
 
-  _getX: function (e) {
-    e = e.touches ? e.touches[0] : e;
-    var x = e.clientX - this._bounds.left;
-    if (x < 0) x = 0;
-    if (x > this._bounds.width) x = this._bounds.width;
-    return x;
-  },
-
-  _getY: function (e) {
-    e = e.touches ? e.touches[0] : e;
-    var y = e.clientY - this._bounds.top;
-    if (y < 0) y = 0;
-    if (y > this._bounds.height) y = this._bounds.height;
-    return y;
+  _onTouchCancel: function (e) {
+    if (!e || e.type === "blur" || this._endsTouch(e)) this._stopDrag();
   },
 
   /**
@@ -192,7 +212,7 @@ Compare.prototype = {
    */
   setSlider: function (x) {
     if (this._removed) return;
-    this._bounds = this._mapB.getContainer().getBoundingClientRect();
+    this._updateBounds();
     this._setPosition(x);
   },
 
@@ -204,6 +224,7 @@ Compare.prototype = {
    * @returns {Compare} `this`
    */
   on: function (type, fn) {
+    if (this._removed) return this;
     this._ev.on(type, fn);
     return this;
   },
@@ -216,6 +237,7 @@ Compare.prototype = {
    * @returns {Compare} `this`
    */
   fire: function (type, data) {
+    if (this._removed) return this;
     this._ev.emit(type, data);
     return this;
   },
@@ -228,6 +250,7 @@ Compare.prototype = {
    * @returns {Compare} `this`
    */
   off: function (type, fn) {
+    if (this._removed) return this;
     this._ev.removeListener(type, fn);
     return this;
   },
@@ -239,20 +262,15 @@ Compare.prototype = {
     this._clearSync();
     this._mapA.off("resize", this._onResize);
     this._mapB.off("resize", this._onResize);
-    var aContainer = this._mapA.getContainer();
-
-    if (!!aContainer) {
-      aContainer.style.clip = null;
-      aContainer.removeEventListener("mousemove", this._onMove);
-    }
-
-    var bContainer = this._mapB.getContainer();
-
-    if (!!bContainer) {
-      bContainer.style.clip = null;
-      bContainer.removeEventListener("mousemove", this._onMove);
-    }
-
+    this._mapA.off("remove", this._onMapRemove);
+    this._mapB.off("remove", this._onMapRemove);
+    activeMaps.delete(this._mapA);
+    activeMaps.delete(this._mapB);
+    this._aContainer.style.clip = this._originalClipA;
+    this._bContainer.style.clip = this._originalClipB;
+    this._aContainer.removeEventListener("mousemove", this._onMove);
+    this._bContainer.removeEventListener("mousemove", this._onMove);
+    this._controlContainer.removeEventListener("mousemove", this._onMove);
     this._swiper.removeEventListener("mousedown", this._onDown);
     this._swiper.removeEventListener("touchstart", this._onDown);
     this._controlContainer.remove();

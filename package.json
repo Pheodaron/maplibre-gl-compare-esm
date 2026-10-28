@@ -11,10 +11,10 @@
     "start": "cp style.css example/style.css && esbuild example/index.js --bundle --format=esm --outfile=example/bundle.js --servedir=example --serve --watch",
     "build": "mkdir -p dist && cp style.css dist/maplibre-gl-compare.css && esbuild index.js --bundle --format=esm --minify --outfile=dist/maplibre-gl-compare.js",
     "test": "npm run lint && npm run test:esm && npm run test:types && npm run test:browser",
-    "lint": "eslint --no-eslintrc -c .eslintrc index.js sync-move.js example/index.js test/*.js test/support/*.js",
+    "lint": "eslint --no-eslintrc -c .eslintrc index.js sync-move.js validate.js example/index.js test/*.js test/support/*.js",
     "docs": "documentation build index.js --format=md > API.md",
-    "test:esm": "npm run build && node --test test/esm.js test/unit.js",
-    "test:browser": "node --test test/browser.js",
+    "test:esm": "npm run build && node --test test/esm.js test/unit.js test/stress.js test/fuzz.js",
+    "test:browser": "node --test test/browser.js test/browser-stress.js",
     "prepack": "npm run build",
     "test:types": "node --test test/types.js"
   },

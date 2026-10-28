@@ -22,7 +22,9 @@ for (const [name, Compare] of [['source', SourceCompare], ['dist', BuiltCompare]
       globalThis.document = document;
       globalThis.Element = MockElement;
       const a = new MockMap(document), b = new MockMap(document);
-      const compare = new Compare(a, b, new MockElement(document), options);
+      const wrapper = new MockElement(document);
+      wrapper.appendChild(a.container); wrapper.appendChild(b.container);
+      const compare = new Compare(a, b, wrapper, options);
       instances.push(compare);
       return { a, b, compare, document };
     }
@@ -75,8 +77,8 @@ for (const [name, Compare] of [['source', SourceCompare], ['dist', BuiltCompare]
         }
         compare._onMove({ clientX: 250 });
         compare.setSlider(100);
-        assert.equal(a.container.style.clip, null);
-        assert.equal(b.container.style.clip, null);
+        assert.equal(a.container.style.clip, "");
+        assert.equal(b.container.style.clip, "");
         assert.equal(slideEnds, 0);
         assert.equal(a.listenerCount('move'), 0);
         assert.equal(b.listenerCount('move'), 0);

@@ -35,7 +35,7 @@
     const b = new Map({ container: 'b', style: style('#0000ff'), center: [10,20], zoom: 4, attributionControl: false });
     for (const map of [a,b]) map.on('error', e => errors.push(e.error.message));
     await Promise.all([a,b].map(map => new Promise(resolve => map.on('load', resolve))));
-    window.fixture = { a, b, errors, Compare, compare: new Compare(a,b,'#wrapper'), slideEnds: [] };
+    window.fixture = { a, b, errors, Compare, Map, style, compare: new Compare(a,b,'#wrapper'), slideEnds: [] };
     fixture.compare.on('slideend', e => fixture.slideEnds.push(e.currentPosition));
   </script>
 </body>

@@ -1,26 +1,7 @@
 import { EventEmitter } from 'node:events';
 
-export class MockElement extends EventTarget {
-  constructor(ownerDocument) {
-    super();
-    this.ownerDocument = ownerDocument;
-    this.style = {};
-    this.children = [];
-    this.bounds = { left: 100, top: 50, width: 400, height: 200 };
-  }
-  appendChild(child) { this.children.push(child); child.parent = this; }
-  getBoundingClientRect() { return { ...this.bounds }; }
-  remove() { if (this.parent) this.parent.children = this.parent.children.filter(x => x !== this); }
-}
-
-export class MockDocument extends EventTarget {
-  constructor() {
-    super();
-    this.defaultView = new EventTarget();
-    this.body = new MockElement(this);
-    this.listeners = new Map();
-  }
-  createElement() { return new MockElement(this); }
+class TrackedTarget extends EventTarget {
+  constructor() { super(); this.listeners = new Map(); }
   addEventListener(type, fn, options) {
     if (!this.listeners.has(type)) this.listeners.set(type, new Set());
     this.listeners.get(type).add(fn);
@@ -31,6 +12,32 @@ export class MockDocument extends EventTarget {
     super.removeEventListener(type, fn);
   }
   count(type) { return this.listeners.get(type)?.size || 0; }
+}
+
+export class MockElement extends TrackedTarget {
+  constructor(ownerDocument) {
+    super();
+    this.ownerDocument = ownerDocument;
+    this.nodeType = 1;
+    this.style = { clip: "" };
+    this.children = [];
+    this.bounds = { left: 100, top: 50, width: 400, height: 200 };
+  }
+  appendChild(child) { child.remove(); this.children.push(child); child.parent = this; }
+  contains(element) { return this === element || this.children.some(child => child.contains(element)); }
+  getBoundingClientRect() { return { ...this.bounds }; }
+  remove() { if (this.parent) this.parent.children = this.parent.children.filter(x => x !== this); this.parent = null; }
+}
+
+export class MockDocument extends TrackedTarget {
+  constructor() {
+    super();
+    this.defaultView = new TrackedTarget();
+    this.body = new MockElement(this);
+    this.selectors = new Map();
+  }
+  createElement() { return new MockElement(this); }
+  querySelector(selector) { return this.selectors.get(selector) || null; }
 }
 
 export class MockMap extends EventEmitter {
@@ -53,6 +60,7 @@ export class MockMap extends EventEmitter {
   getPadding() { return this.camera.padding; }
   getCenterElevation() { return this.camera.elevation; }
   getVerticalFieldOfView() { return this.camera.fov; }
-  setVerticalFieldOfView(fov) { this.camera.fov = fov; this.emit('move'); }
-  jumpTo(camera) { Object.assign(this.camera, camera); this.emit('move'); }
+  setVerticalFieldOfView(fov, eventData) { this.camera.fov = fov; this.emit('move', { ...eventData, type: 'move', target: this }); }
+  jumpTo(camera, eventData) { Object.assign(this.camera, camera); this.emit('move', { ...eventData, type: 'move', target: this }); }
+  remove() { this._removed = true; this.emit('remove', { type: 'remove', target: this }); }
 }
